@@ -1,0 +1,26 @@
+
+
+
+arbres couvrant (classiques):
+- DFS Backtracking Recursive [DONE]
+- DFS Backtracking Iterative [DONE]
+- PRIM
+- Kruskal
+- Aldous-Broder
+- Wilson
+
+division et structure:
+- Recursive Division
+
+Carving directionnel:
+- Binary Tree
+- Sidewinder
+
+hybrides et variations:
+- GrowingTree                [DONE]
+- Hunt-and-Kill
+
+maze cycles (non parfaits):
+- Ajout de boucles
+- Cellular Automata
+- Perlin Noise / bruit procédural
