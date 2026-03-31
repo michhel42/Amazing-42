@@ -7,14 +7,15 @@
 #   By: vihardy <vihardy@student.42.fr>              +#+  +:+       +#+       #
 #                                                  +#+#+#+#+#+   +#+          #
 #   Created: 2026/03/27 21:57:31 by vihardy             #+#    #+#            #
-#   Updated: 2026/03/28 06:51:57 by vihardy            ###   ########.fr      #
+#   Updated: 2026/03/31 21:55:08 by vihardy            ###   ########.fr      #
 #                                                                             #
 # ########################################################################### #
 
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Generator
 from abc import ABC, abstractmethod
+from maze_display import MazeDisplay
 import random
 
 
@@ -49,6 +50,7 @@ class Cell:
         self.y: int = y
         self.wall = 15
         self.active = False
+        self.color = None
 
     def add_wall(self, dir: Dir) -> None:
         self.wall = self.wall | (1 << dir.value)
@@ -81,7 +83,7 @@ class Maze(ABC):
         self.height = height
         self.length = length
         self.seed = seed
-        self.maze: List[List[Cell]] = [[Cell(x, y) for x in range(length)] for y in range(height)]
+        self.maze: List[List[Cell]] = []
 
     @property
     def seed(self) -> int:
@@ -91,6 +93,9 @@ class Maze(ABC):
     def seed(self, value: int) -> None:
         random.seed(value)
         self.__seed = value
+
+    def reset_maze(self) -> None:
+        self.maze = [[Cell(x, y) for x in range(self.length)] for y in range(self.height)]
 
     def gen_output(self, file: str) -> None:
         with open(file, "w") as f:
@@ -120,23 +125,6 @@ class Maze(ABC):
         print(prt1)
 
     @staticmethod
-    def verif_cell(func: Callable[[Cell, Cell, Axe], bool]) -> Callable[[Cell, Cell, Axe], bool]:
-        @wraps(func)
-        def wrapper(cell1: Cell, cell2: Cell, axe: Axe) -> bool:
-            dx = cell2.x - cell1.x
-            dy = cell2.y - cell1.y
-            if (dx, dy) == (0, 1):
-                return func(cell1, cell2, Axe.V)
-            if (dx, dy) == (0, -1):
-                return func(cell2, cell1, Axe.V)
-            if (dx, dy) == (1, 0):
-                return func(cell1, cell2, Axe.H)
-            if (dx, dy) == (-1, 0):
-                return func(cell2, cell1, Axe.H)
-            return False
-        return wrapper
-
-    @staticmethod
     def connect_cell(cell1: Cell, cell2: Cell) -> bool:
         dx = cell2.x - cell1.x
         dy = cell2.y - cell1.y
@@ -149,36 +137,37 @@ class Maze(ABC):
         return False
 
     @abstractmethod
-    def gen_maze(self) -> Any:
+    def gen_maze(self) -> Generator[List[Cell], bool, None]:
         pass
 
-class DFSRecursive(Maze): # DFS/Prim
-    def __init__(self, height: int, length: int, seed: int) -> None:
-        super().__init__(height, length, seed)
-        self.tree: List[Cell] = []
+# class DFSRecursive(Maze): # DFS/Prim
+#     def __init__(self, height: int, length: int, seed: int) -> None:
+#         super().__init__(height, length, seed)
+#         self.tree: List[Cell] = []
 
-    def rec_finder(self) -> None:
-        neighbors = self.tree[-1].neighbors(self.maze)
-        while(len(neighbors)):
-            key = random.choice(list(neighbors.keys()))
-            if not neighbors[key].active:
-                neighbors[key].active = True
-                self.connect_cell(self.tree[-1], neighbors[key])
-                self.tree.append(neighbors[key])
-                self.rec_finder()
-            del neighbors[key]
-        self.tree.pop(-1)
+#     def rec_finder(self) -> None:
+#         neighbors = self.tree[-1].neighbors(self.maze)
+#         while(len(neighbors)):
+#             key = random.choice(list(neighbors.keys()))
+#             if not neighbors[key].active:
+#                 neighbors[key].active = True
+#                 self.connect_cell(self.tree[-1], neighbors[key])
+#                 self.tree.append(neighbors[key])
+#                 self.rec_finder()
+#             del neighbors[key]
+#         self.tree.pop(-1)
         
-    def gen_maze(self) -> Any:
-        x, y = (random.randint(0, self.length - 1),
-                random.randint(0, self.height - 1))
-        start = self.maze[y][x]
-        start.active = True
-        self.tree.append(start)
-        try:
-            self.rec_finder()
-        except RecursionError as e:
-            print(f"Erreur: {e}")
+#     def gen_maze(self):
+#         self.reset_maze()
+#         x, y = (random.randint(0, self.length - 1),
+#                 random.randint(0, self.height - 1))
+#         start = self.maze[y][x]
+#         start.active = True
+#         self.tree.append(start)
+#         try:
+#             self.rec_finder()
+#         except RecursionError as e:
+#             print(f"Erreur: {e}")
 
 
 class DFSIterative(Maze): # DFS/Prim
@@ -199,13 +188,28 @@ class DFSIterative(Maze): # DFS/Prim
                 self.connect_cell(current, ngb[key])
                 self.tree.append(ngb[key])
         
-    def gen_maze(self) -> Any:
+    def gen_maze(self) -> Generator[List[Cell], bool, None]:
+        self.reset_maze()
         x, y = (random.randint(0, self.length - 1),
                 random.randint(0, self.height - 1))
         start = self.maze[y][x]
         start.active = True
         self.tree.append(start)
-        self.iter_finder()
+        gen_continue = True
+        while (len(self.tree)):
+            current = self.tree[-1]
+            ngb = current.neighbors(self.maze)
+            ngb = {key:value for key, value in ngb.items() if not value.active}
+            if len(ngb.items()) == 0:
+                self.tree.pop()
+            else:
+                key = random.choice(list(ngb.keys()))
+                ngb[key].active = True
+                self.connect_cell(current, ngb[key])
+                self.tree.append(ngb[key])
+                if gen_continue:
+                    gen_continue = yield
+        yield
 
 
 class GrowingTreeIterative(Maze): # Mon favoris!!!
@@ -226,33 +230,49 @@ class GrowingTreeIterative(Maze): # Mon favoris!!!
                 self.connect_cell(current, ngb[key])
                 self.tree.append(ngb[key])
         
-    def gen_maze(self) -> Any:
+    def gen_maze(self) -> Generator[List[Cell], bool, None]:
+        self.reset_maze()
         x, y = (random.randint(0, self.length - 1),
                 random.randint(0, self.height - 1))
         start = self.maze[y][x]
         start.active = True
         self.tree.append(start)
-        self.iter_finder()
-
-
-
-
-
-
+        gen_continue = True
+        while (len(self.tree)):
+            current = random.choice(self.tree)
+            ngb = current.neighbors(self.maze)
+            ngb = {key:value for key, value in ngb.items() if not value.active}
+            if len(ngb.items()) == 0:
+                self.tree.remove(current)
+            else:
+                key = random.choice(list(ngb.keys()))
+                ngb[key].active = True
+                self.connect_cell(current, ngb[key])
+                self.tree.append(ngb[key])
+                if gen_continue:
+                    gen_continue = yield
+        yield
 
 
 if __name__ == "__main__":
-    height, length = int(input("height:")), int(input("length:"))
-    seed = int(input("seed:"))
-    print("GrowingTreeIterative:")
-    maze = GrowingTreeIterative(height, length, seed)
-    maze.gen_maze()
-    maze.show()
-    print("DFSIterative:")
-    maze2 = DFSIterative(height, length, seed)
-    maze2.gen_maze()
-    maze2.show()
-    print("DFSRecursive:")
-    maze3 = DFSRecursive(height, length, seed)
-    maze3.gen_maze()
-    maze3.show()
+    choice = 0
+    while(choice == 0 or choice == 1 or choice == 2):
+        choice = int(input("1) GrowingTree\n2) DFS\n3) Exit\n\nchoice:"))
+        
+        if choice == 1:
+            height, length = int(input("height:")), int(input("length:"))
+            seed = int(input("seed:"))
+            print("GrowingTreeIterative:")
+            maze = GrowingTreeIterative(height, length, seed)
+        elif choice == 2:
+            height, length = int(input("height:")), int(input("length:"))
+            seed = int(input("seed:"))
+            print("DFSIterative:")
+            maze = DFSIterative(height, length, seed)
+        elif choice == 3:
+            break
+        else:
+            continue
+        win = MazeDisplay(maze)
+        win.run_win()
+        maze.show()
