@@ -7,7 +7,7 @@
 #   By: vihardy <vihardy@student.42.fr>              +#+  +:+       +#+       #
 #                                                  +#+#+#+#+#+   +#+          #
 #   Created: 2026/03/27 21:57:31 by vihardy             #+#    #+#            #
-#   Updated: 2026/03/31 21:55:08 by vihardy            ###   ########.fr      #
+#   Updated: 2026/04/01 13:11:50 by vihardy            ###   ########.fr      #
 #                                                                             #
 # ########################################################################### #
 
@@ -207,8 +207,8 @@ class DFSIterative(Maze): # DFS/Prim
                 ngb[key].active = True
                 self.connect_cell(current, ngb[key])
                 self.tree.append(ngb[key])
-                if gen_continue:
-                    gen_continue = yield
+            if gen_continue:
+                gen_continue = yield
         yield
 
 
@@ -249,8 +249,8 @@ class GrowingTreeIterative(Maze): # Mon favoris!!!
                 ngb[key].active = True
                 self.connect_cell(current, ngb[key])
                 self.tree.append(ngb[key])
-                if gen_continue:
-                    gen_continue = yield
+            if gen_continue:
+                gen_continue = yield
         yield
 
 

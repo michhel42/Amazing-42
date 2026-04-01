@@ -24,3 +24,6 @@ maze cycles (non parfaits):
 - Ajout de boucles
 - Cellular Automata
 - Perlin Noise / bruit procédural
+
+
+PLAN RAYCASTING:
